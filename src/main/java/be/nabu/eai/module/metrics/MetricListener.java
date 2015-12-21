@@ -95,7 +95,6 @@ public class MetricListener implements ServerListener {
 					ByteArrayOutputStream output = new ByteArrayOutputStream();
 					binding.marshal(output, new BeanInstance<MetricOverview>(overview));
 					byte [] content = output.toByteArray();
-					System.out.println("TOTAL: " + new String(content));
 					return new DefaultHTTPResponse(200, HTTPCodes.getMessage(200), new PlainMimeContentPart(null, IOUtils.wrap(content, true), 
 						new MimeHeader("Transfer-Encoding", "chunked"),
 						new MimeHeader("Content-Encoding", "gzip"),
