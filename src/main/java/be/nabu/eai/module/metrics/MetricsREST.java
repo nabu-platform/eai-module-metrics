@@ -24,7 +24,17 @@ public class MetricsREST {
 	
 	@GET
 	@Path("/metrics/{since}")
-	public MetricOverview getOverview(@PathParam("since") Date since) {
+	public MetricOverview getOverview(@PathParam("since") Long since) {
+		return build(repository, since == null ? null : new Date(since));
+	}
+	
+	@GET
+	@Path("/metrics")
+	public MetricOverview getFullOverview() {
+		return getOverview(null);
+	}
+	
+	public static MetricOverview build(EAIResourceRepository repository, Date since) {
 		MetricOverview overview = new MetricOverview();
 		for (String id : repository.getMetricInstances()) {
 			ArtifactMetrics artifactMetrics = null;
@@ -61,12 +71,6 @@ public class MetricsREST {
 			}
 		}
 		return overview;
-	}
-	
-	@GET
-	@Path("/metrics")
-	public MetricOverview getOverview() {
-		return getOverview(null);
 	}
 	
 }
