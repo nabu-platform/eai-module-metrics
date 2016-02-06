@@ -47,7 +47,7 @@ public class MetricsREST {
 			if (artifactMetrics == null) {
 				artifactMetrics = new ArtifactMetrics();
 				artifactMetrics.setId(id);
-				artifactMetrics.setLevel(repository.getMetricsLevel(id));
+//				artifactMetrics.setLevel(MetricsLevelProvider.getLevelFor(id));
 				Artifact artifact = repository.resolve(id);
 				if (artifact != null) {
 					artifactMetrics.setArtifactType(artifact.getClass().getName());
