@@ -1,4 +1,4 @@
-package nabu.artifacts;
+package nabu.misc.metrics;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -28,7 +28,7 @@ import be.nabu.utils.mime.impl.MimeHeader;
 import be.nabu.utils.mime.impl.PlainMimeEmptyPart;
 
 @WebService
-public class Metrics {
+public class Services {
 	
 	public MetricOverview metrics(@WebParam(name = "host") String host, @WebParam(name = "since") Date since) throws IOException, FormatException, ParseException {
 		ServerConnection connection = null;
