@@ -16,6 +16,7 @@ import be.nabu.libs.metrics.core.SinkValueImpl;
 import be.nabu.libs.metrics.core.api.CurrentValueSink;
 import be.nabu.libs.metrics.core.api.HistorySink;
 import be.nabu.libs.metrics.core.api.Sink;
+import be.nabu.libs.services.api.DefinedService;
 
 public class MetricsREST {
 	
@@ -50,7 +51,13 @@ public class MetricsREST {
 //				artifactMetrics.setLevel(MetricsLevelProvider.getLevelFor(id));
 				Artifact artifact = repository.resolve(id);
 				if (artifact != null) {
-					artifactMetrics.setArtifactType(artifact.getClass().getName());
+					// group services
+					if (DefinedService.class.isAssignableFrom(artifact.getClass())) {
+						artifactMetrics.setArtifactType(DefinedService.class.getName());
+					}
+					else {
+						artifactMetrics.setArtifactType(artifact.getClass().getName());
+					}
 				}
 				overview.getMetrics().add(artifactMetrics);
 			}

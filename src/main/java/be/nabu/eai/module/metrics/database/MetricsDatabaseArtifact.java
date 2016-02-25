@@ -44,9 +44,9 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 		PartitionedSinkProvider provider = getProvider();
 		Map<String, List<String>> sinks = provider.getSinks();
 		for (String id : sinks.keySet()) {
+			boolean hasData = false;
 			ArtifactMetrics artifactMetrics = new ArtifactMetrics();
 			artifactMetrics.setId(id);
-			overview.getMetrics().add(artifactMetrics);
 			for (String category : sinks.get(id)) {
 				PartitionedSink sink = provider.getSink(id, category);
 				artifactMetrics.getSnapshots().put(category, since == null 
@@ -58,6 +58,7 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 				if (artifactMetrics.getArtifactType() == null) {
 					artifactMetrics.setArtifactType(sink.getTag("artifactType"));
 				}
+				hasData |= artifactMetrics.getSnapshots().get(category).getValues().size() > 0;
 			}
 			// if we still don't know the type, try to resolve it (again best effort)
 			if (artifactMetrics.getArtifactType() == null) {
@@ -65,6 +66,9 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 				if (artifact != null) {
 					artifactMetrics.setArtifactType(artifact.getClass().getName());
 				}
+			}
+			if (hasData) {
+				overview.getMetrics().add(artifactMetrics);
 			}
 		}
 		return overview;
