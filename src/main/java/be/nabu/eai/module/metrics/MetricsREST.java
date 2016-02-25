@@ -63,7 +63,7 @@ public class MetricsREST {
 				if (sink instanceof HistorySink) {
 					artifactMetrics.getSnapshots().put(sinkId, since == null 
 						? ((HistorySink) sink).getSnapshot(50)
-						: ((HistorySink) sink).getSnapshotAfter(since.getTime()));
+						: ((HistorySink) sink).getSnapshotBetween(since.getTime() + 1, new Date().getTime()));
 				}
 				else if (sink instanceof CurrentValueSink) {
 					artifactMetrics.getGauges().put(sinkId, ((CurrentValueSink) sink).getCurrent());	

@@ -6,6 +6,7 @@ import java.text.ParseException;
 import java.util.Date;
 
 import javax.jws.WebParam;
+import javax.jws.WebResult;
 import javax.jws.WebService;
 
 import be.nabu.eai.module.cluster.ClusterArtifact;
@@ -30,6 +31,7 @@ import be.nabu.utils.mime.impl.PlainMimeEmptyPart;
 @WebService
 public class Services {
 	
+	@WebResult(name = "metrics")
 	public MetricOverview metrics(@WebParam(name = "host") String host, @WebParam(name = "since") Date since) throws IOException, FormatException, ParseException {
 		ServerConnection connection = null;
 		if (host != null) {
