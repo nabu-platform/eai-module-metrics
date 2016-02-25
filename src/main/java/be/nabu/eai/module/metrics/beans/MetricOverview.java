@@ -10,7 +10,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "overview")
 public class MetricOverview {
 	
-	private long timestamp = new Date().getTime();
+	/**
+	 * Subtract one so we are _sure_ that all the metrics are "in"
+	 */
+	private long timestamp = new Date().getTime() - 1;
+	
 	private List<ArtifactMetrics> metrics = new ArrayList<ArtifactMetrics>();
 
 	public List<ArtifactMetrics> getMetrics() {

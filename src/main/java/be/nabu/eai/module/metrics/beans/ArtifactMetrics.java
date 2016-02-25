@@ -8,16 +8,18 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.libs.metrics.core.api.SinkSnapshot;
+import be.nabu.libs.metrics.core.api.SinkStatistics;
 import be.nabu.libs.metrics.core.api.SinkValue;
 
-@XmlType(propOrder = { "id", "artifactType", "since", "level", "snapshots", "gauges" })
+@XmlType(propOrder = { "id", "artifactType", "since", "level", "snapshots", "gauges", "statistics" })
 public class ArtifactMetrics {
 	
 	private String id, artifactType;
 	private Map<String, SinkSnapshot> snapshots;
 	private Map<String, SinkValue> gauges;
+	private Map<String, SinkStatistics> statistics;
 	private Date since;
-	private int level;
+	private Integer level;
 	
 	@XmlAttribute
 	public String getId() {
@@ -44,10 +46,10 @@ public class ArtifactMetrics {
 	}
 	
 	@XmlAttribute
-	public int getLevel() {
+	public Integer getLevel() {
 		return level;
 	}
-	public void setLevel(int level) {
+	public void setLevel(Integer level) {
 		this.level = level;
 	}
 	
@@ -70,4 +72,16 @@ public class ArtifactMetrics {
 	public void setGauges(Map<String, SinkValue> gauges) {
 		this.gauges = gauges;
 	}
+	
+	public Map<String, SinkStatistics> getStatistics() {
+		if (statistics == null) {
+			statistics = new HashMap<String, SinkStatistics>();
+		}
+		return statistics;
+	}
+	public void setStatistics(Map<String, SinkStatistics> statistics) {
+		this.statistics = statistics;
+	}
+	
+	
 }
