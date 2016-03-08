@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import be.nabu.eai.module.metrics.MetricsREST;
 import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
 import be.nabu.eai.module.metrics.beans.MetricOverview;
 import be.nabu.eai.repository.api.Repository;
@@ -55,16 +56,23 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 				// get the current statistics for the sink
 				artifactMetrics.getStatistics().put(category, new SinkStatisticsImpl(sink.getStatistics()));
 				// best effort filling in of the artifact type
-				if (artifactMetrics.getArtifactType() == null) {
-					artifactMetrics.setArtifactType(sink.getTag("artifactType"));
+				if (artifactMetrics.getType() == null) {
+					artifactMetrics.setType(sink.getTag("type"));
 				}
+				if (sink.getTags() != null) {
+					for (String tag : sink.getTags()) {
+						artifactMetrics.getTags().put(tag, sink.getTag(tag));
+					}
+				}
+				artifactMetrics.setSince(since);
+				artifactMetrics.setUntil(until);
 				hasData |= artifactMetrics.getSnapshots().get(category).getValues().size() > 0;
 			}
 			// if we still don't know the type, try to resolve it (again best effort)
-			if (artifactMetrics.getArtifactType() == null) {
+			if (artifactMetrics.getType() == null) {
 				Artifact artifact = getRepository().resolve(id);
 				if (artifact != null) {
-					artifactMetrics.setArtifactType(artifact.getClass().getName());
+					artifactMetrics.setType(MetricsREST.getType(artifact));
 				}
 			}
 			if (hasData) {
@@ -88,8 +96,11 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 			for (String key : snapshots.keySet()) {
 				SinkSnapshot sinkSnapshot = snapshots.get(key);
 				PartitionedSink sink = provider.getSink(metrics.getId(), key);
-				if (metrics.getArtifactType() != null && !metrics.getArtifactType().equals(sink.getTag("artifactType"))) {
-					sink.setTag("artifactType", metrics.getArtifactType());
+				if (metrics.getType() != null && !metrics.getType().equals(sink.getTag("type"))) {
+					sink.setTag("type", metrics.getType());
+				}
+				for (String tag : metrics.getTags().keySet()) {
+					sink.setTag(tag, metrics.getTags().get(tag));
 				}
 				for (SinkValue value : sinkSnapshot.getValues()) {
 					sink.push(value.getTimestamp(), value.getValue());

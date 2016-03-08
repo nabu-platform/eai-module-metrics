@@ -48,16 +48,12 @@ public class MetricsREST {
 			if (artifactMetrics == null) {
 				artifactMetrics = new ArtifactMetrics();
 				artifactMetrics.setId(id);
-//				artifactMetrics.setLevel(MetricsLevelProvider.getLevelFor(id));
+				artifactMetrics.setSince(since);
+				artifactMetrics.setUntil(new Date(overview.getTimestamp()));
 				Artifact artifact = repository.resolve(id);
 				if (artifact != null) {
-					// group services
-					if (DefinedService.class.isAssignableFrom(artifact.getClass())) {
-						artifactMetrics.setArtifactType(DefinedService.class.getName());
-					}
-					else {
-						artifactMetrics.setArtifactType(artifact.getClass().getName());
-					}
+					artifactMetrics.setType(getType(artifact));
+					artifactMetrics.getTags().put("class", artifact.getClass().getName());
 				}
 				overview.getMetrics().add(artifactMetrics);
 			}
@@ -78,6 +74,16 @@ public class MetricsREST {
 			}
 		}
 		return overview;
+	}
+	
+	public static String getType(Artifact artifact) {
+		// group services
+		if (DefinedService.class.isAssignableFrom(artifact.getClass())) {
+			return DefinedService.class.getName();
+		}
+		else {
+			return artifact.getClass().getName();
+		}
 	}
 	
 }

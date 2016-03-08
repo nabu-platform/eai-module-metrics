@@ -11,15 +11,15 @@ import be.nabu.libs.metrics.core.api.SinkSnapshot;
 import be.nabu.libs.metrics.core.api.SinkStatistics;
 import be.nabu.libs.metrics.core.api.SinkValue;
 
-@XmlType(propOrder = { "id", "artifactType", "since", "level", "snapshots", "gauges", "statistics" })
+@XmlType(propOrder = { "id", "type", "since", "until", "snapshots", "gauges", "statistics", "tags" })
 public class ArtifactMetrics {
 	
-	private String id, artifactType;
+	private String id, type;
 	private Map<String, SinkSnapshot> snapshots;
 	private Map<String, SinkValue> gauges;
 	private Map<String, SinkStatistics> statistics;
-	private Date since;
-	private Integer level;
+	private Map<String, String> tags;
+	private Date since, until;
 	
 	@XmlAttribute
 	public String getId() {
@@ -30,11 +30,11 @@ public class ArtifactMetrics {
 	}
 	
 	@XmlAttribute
-	public String getArtifactType() {
-		return artifactType;
+	public String getType() {
+		return type;
 	}
-	public void setArtifactType(String artifactType) {
-		this.artifactType = artifactType;
+	public void setType(String artifactType) {
+		this.type = artifactType;
 	}
 	
 	@XmlAttribute
@@ -46,11 +46,11 @@ public class ArtifactMetrics {
 	}
 	
 	@XmlAttribute
-	public Integer getLevel() {
-		return level;
+	public Date getUntil() {
+		return until;
 	}
-	public void setLevel(Integer level) {
-		this.level = level;
+	public void setUntil(Date until) {
+		this.until = until;
 	}
 	
 	public Map<String, SinkSnapshot> getSnapshots() {
@@ -83,5 +83,14 @@ public class ArtifactMetrics {
 		this.statistics = statistics;
 	}
 	
+	public Map<String, String> getTags() {
+		if (tags == null) {
+			tags = new HashMap<String, String>();
+		}
+		return tags;
+	}
+	public void setTags(Map<String, String> tags) {
+		this.tags = tags;
+	}
 	
 }
