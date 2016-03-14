@@ -23,6 +23,8 @@ import be.nabu.libs.resources.api.ResourceContainer;
 
 public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfiguration> {
 
+	public static final int DEFAULT_AMOUNT = 100;
+	
 	/**
 	 * This is the last pushed for the entire database, you can not (currently) request a last pushed on a sink-by-sink basis
 	 */
@@ -51,7 +53,7 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 			for (String category : sinks.get(id)) {
 				PartitionedSink sink = provider.getSink(id, category);
 				artifactMetrics.getSnapshots().put(category, since == null 
-					? sink.getSnapshotUntil(50, overview.getTimestamp())
+					? sink.getSnapshotUntil(DEFAULT_AMOUNT, overview.getTimestamp())
 					: sink.getSnapshotBetween(since.getTime() + 1, overview.getTimestamp()));
 				// get the current statistics for the sink
 				artifactMetrics.getStatistics().put(category, new SinkStatisticsImpl(sink.getStatistics()));
