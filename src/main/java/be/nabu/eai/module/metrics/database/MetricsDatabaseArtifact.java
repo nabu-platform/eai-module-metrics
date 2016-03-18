@@ -8,6 +8,7 @@ import java.util.Map;
 import be.nabu.eai.module.metrics.MetricsREST;
 import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
 import be.nabu.eai.module.metrics.beans.MetricOverview;
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.Artifact;
@@ -142,15 +143,21 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 				synchronized(this) {
 					if (provider == null) {
 						URI storageURI = getConfiguration().getStorage();
+						Resource storage;
 						if (storageURI == null) {
-							throw new IllegalArgumentException("Expecting a storage URI for a metrics database");
+							storage = ResourceUtils.mkdirs(getDirectory(), EAIResourceRepository.PUBLIC);
 						}
-						Resource storage = ResourceUtils.mkdir(storageURI, null);
+						else {
+							storage = ResourceUtils.mkdir(storageURI, null);
+						}
+						Resource temporary;
 						URI temporaryURI = getConfiguration().getTemporary();
 						if (temporaryURI == null) {
-							temporaryURI = new URI("tmp:/metrics");
+							temporary = ResourceUtils.mkdirs(getDirectory(), EAIResourceRepository.PRIVATE);
 						}
-						Resource temporary = ResourceUtils.mkdir(temporaryURI, null);
+						else {
+							temporary = ResourceUtils.mkdir(temporaryURI, null);
+						}
 						provider = new PartitionedSinkProvider(new PartitionConfigurationProvider() {
 							@Override
 							public long getPartitionInterval(String id, String category) {
