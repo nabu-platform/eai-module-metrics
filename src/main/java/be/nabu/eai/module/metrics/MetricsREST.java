@@ -13,10 +13,12 @@ import be.nabu.eai.module.metrics.database.MetricsDatabaseArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
+import be.nabu.libs.metrics.core.SinkStatisticsImpl;
 import be.nabu.libs.metrics.core.SinkValueImpl;
 import be.nabu.libs.metrics.core.api.CurrentValueSink;
 import be.nabu.libs.metrics.core.api.HistorySink;
 import be.nabu.libs.metrics.core.api.Sink;
+import be.nabu.libs.metrics.core.api.StatisticsContainer;
 import be.nabu.libs.services.api.DefinedService;
 
 public class MetricsREST {
@@ -71,6 +73,9 @@ public class MetricsREST {
 				}
 				else if (sink instanceof CurrentValueSink) {
 					artifactMetrics.getGauges().put(sinkId, ((CurrentValueSink) sink).getCurrent());	
+				}
+				if (sink instanceof StatisticsContainer) {
+					artifactMetrics.getStatistics().put(sinkId, new SinkStatisticsImpl(((StatisticsContainer) sink).getStatistics()));
 				}
 			}
 		}
