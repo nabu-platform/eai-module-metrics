@@ -43,9 +43,11 @@ public class Services {
 		ServerConnection connection = null;
 		if (host != null) {
 			for (ClusterArtifact cluster : EAIResourceRepository.getInstance().getArtifacts(ClusterArtifact.class)) {
-				connection = cluster.getConnection(host);
-				if (connection != null) {
-					break;
+				if (cluster.getConfig().getHosts() != null && cluster.getConfig().getHosts().contains(host)) {
+					connection = cluster.getConnection(host);
+					if (connection != null) {
+						break;
+					}
 				}
 			}
 			if (connection == null) {
@@ -56,7 +58,8 @@ public class Services {
 			HTTPClient client = connection.getClient();
 			HTTPResponse response = client.execute(new DefaultHTTPRequest("GET", since == null ? "/metrics" : "/metrics/" + since.getTime(), new PlainMimeEmptyPart(null,
 				new MimeHeader("Content-Length", "0"),
-				new MimeHeader("Accept", "gzip"),
+				new MimeHeader("Accept", "application/xml"),
+				new MimeHeader("Accept-Encoding", "gzip"),
 				new MimeHeader("Host", host)
 			)), connection.getPrincipal(), false, false);
 			if (response.getCode() != 200) {
