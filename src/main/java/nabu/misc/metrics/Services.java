@@ -39,7 +39,7 @@ public class Services {
 	private ExecutionContext context;
 	
 	@WebResult(name = "metrics")
-	public MetricOverview poll(@WebParam(name = "host") String host, @WebParam(name = "since") Date since) throws IOException, FormatException, ParseException {
+	public MetricOverview poll(@WebParam(name = "host") String host, @WebParam(name = "since") Date since, @WebParam(name = "filter") String filter) throws IOException, FormatException, ParseException {
 		ServerConnection connection = null;
 		if (host != null) {
 			for (ClusterArtifact cluster : EAIResourceRepository.getInstance().getArtifacts(ClusterArtifact.class)) {
@@ -56,7 +56,7 @@ public class Services {
 		}
 		if (connection != null) {
 			HTTPClient client = connection.getClient();
-			HTTPResponse response = client.execute(new DefaultHTTPRequest("GET", since == null ? "/metrics" : "/metrics/" + since.getTime(), new PlainMimeEmptyPart(null,
+			HTTPResponse response = client.execute(new DefaultHTTPRequest("GET", (since == null ? "/metrics" : "/metrics/" + since.getTime()) + (filter == null ? "" : "?filter=" + filter), new PlainMimeEmptyPart(null,
 				new MimeHeader("Content-Length", "0"),
 				new MimeHeader("Accept", "application/xml"),
 				new MimeHeader("Accept-Encoding", "gzip"),
@@ -70,7 +70,7 @@ public class Services {
 		}
 		// we are on the current repository
 		else {
-			return MetricsREST.build(EAIResourceRepository.getInstance(), since);
+			return MetricsREST.build(EAIResourceRepository.getInstance(), since, filter);
 		}
 	}
 	
