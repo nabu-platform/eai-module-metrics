@@ -12,7 +12,7 @@ import be.nabu.libs.property.api.Value;
 public class MetricsDatabaseGUIManager extends BaseJAXBGUIManager<MetricsDatabaseConfiguration, MetricsDatabaseArtifact> {
 
 	public MetricsDatabaseGUIManager() {
-		super("Metrics Database", MetricsDatabaseArtifact.class, new MetricsDatabaseManager(), MetricsDatabaseConfiguration.class);
+		super("File Database", MetricsDatabaseArtifact.class, new MetricsDatabaseManager(), MetricsDatabaseConfiguration.class);
 	}
 
 	@Override
@@ -27,7 +27,7 @@ public class MetricsDatabaseGUIManager extends BaseJAXBGUIManager<MetricsDatabas
 
 	@Override
 	public String getCategory() {
-		return "Miscellaneous";
+		return "Metrics";
 	}
 	
 }

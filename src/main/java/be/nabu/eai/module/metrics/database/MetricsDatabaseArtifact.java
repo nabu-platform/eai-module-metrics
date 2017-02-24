@@ -5,139 +5,63 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import be.nabu.eai.module.metrics.MetricsREST;
-import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
-import be.nabu.eai.module.metrics.beans.MetricOverview;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.ListableSinkProviderArtifact;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
-import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.metrics.core.SinkStatisticsImpl;
+import be.nabu.libs.metrics.core.api.HistorySink;
+import be.nabu.libs.metrics.core.api.ListableSinkProvider;
+import be.nabu.libs.metrics.core.api.Sink;
 import be.nabu.libs.metrics.core.api.SinkSnapshot;
-import be.nabu.libs.metrics.core.api.SinkValue;
-import be.nabu.libs.metrics.database.PartitionedSink;
 import be.nabu.libs.metrics.database.PartitionedSinkProvider;
 import be.nabu.libs.metrics.database.api.PartitionConfigurationProvider;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 
-public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfiguration> {
+public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfiguration> implements ListableSinkProviderArtifact {
 
-	public static final int DEFAULT_AMOUNT = 100;
-	
 	/**
 	 * This is the last pushed for the entire database, you can not (currently) request a last pushed on a sink-by-sink basis
 	 */
 	private Date lastPushed;
-	private PartitionedSinkProvider provider;
+	private ListableSinkProvider provider;
 	
 	public MetricsDatabaseArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, repository, "metrics-database.xml", MetricsDatabaseConfiguration.class);
 	}
 	
-	public Map<String, List<String>> getSinks() {
-		return getProvider().getSinks();
-	}
-	
-	public MetricOverview select(Date since, Date until) {
-		MetricOverview overview = new MetricOverview();
-		if (until != null) {
-			overview.setTimestamp(until.getTime());
-		}
-		PartitionedSinkProvider provider = getProvider();
-		Map<String, List<String>> sinks = provider.getSinks();
-		for (String id : sinks.keySet()) {
-			boolean hasData = false;
-			ArtifactMetrics artifactMetrics = new ArtifactMetrics();
-			artifactMetrics.setId(id);
-			for (String category : sinks.get(id)) {
-				PartitionedSink sink = provider.getSink(id, category);
-				artifactMetrics.getSnapshots().put(category, since == null 
-					? sink.getSnapshotUntil(DEFAULT_AMOUNT, overview.getTimestamp())
-					: sink.getSnapshotBetween(since.getTime() + 1, overview.getTimestamp()));
-				// get the current statistics for the sink
-				artifactMetrics.getStatistics().put(category, new SinkStatisticsImpl(sink.getStatistics()));
-				// best effort filling in of the artifact type
-				if (artifactMetrics.getType() == null) {
-					artifactMetrics.setType(sink.getTag("type"));
-				}
-				if (sink.getTags() != null) {
-					for (String tag : sink.getTags()) {
-						artifactMetrics.getTags().put(tag, sink.getTag(tag));
-					}
-				}
-				artifactMetrics.setSince(since);
-				artifactMetrics.setUntil(until);
-				hasData |= artifactMetrics.getSnapshots().get(category).getValues().size() > 0;
-			}
-			// if we still don't know the type, try to resolve it (again best effort)
-			if (artifactMetrics.getType() == null) {
-				Artifact artifact = getRepository().resolve(id);
-				if (artifact != null) {
-					artifactMetrics.setType(MetricsREST.getType(artifact));
-				}
-			}
-			if (hasData) {
-				overview.getMetrics().add(artifactMetrics);
-			}
-		}
-		return overview;
-	}
-	
-	public void persist(MetricOverview overview) {
-		PartitionedSinkProvider provider = getProvider();
-		for (ArtifactMetrics metrics : overview.getMetrics()) {
-			// push the gauges
-			Map<String, SinkValue> gauges = metrics.getGauges();
-			for (String key : gauges.keySet()) {
-				SinkValue sinkValue = gauges.get(key);
-				provider.getSink(metrics.getId(), key).push(sinkValue.getTimestamp(), sinkValue.getValue());
-			}
-			// push the snapshots
-			Map<String, SinkSnapshot> snapshots = metrics.getSnapshots();
-			for (String key : snapshots.keySet()) {
-				SinkSnapshot sinkSnapshot = snapshots.get(key);
-				PartitionedSink sink = provider.getSink(metrics.getId(), key);
-				if (metrics.getType() != null && !metrics.getType().equals(sink.getTag("type"))) {
-					sink.setTag("type", metrics.getType());
-				}
-				for (String tag : metrics.getTags().keySet()) {
-					sink.setTag(tag, metrics.getTags().get(tag));
-				}
-				for (SinkValue value : sinkSnapshot.getValues()) {
-					sink.push(value.getTimestamp(), value.getValue());
-				}
-			}
-		}
-		// update the last pushed
-		lastPushed = new Date(overview.getTimestamp());
+	public void setLastPushed(Date lastPushed) {
+		this.lastPushed = lastPushed;
 	}
 	
 	public Date getLastPushed() {
 		if (lastPushed == null) {
-			// calculate the last pushed based on the most recent data available across all sinks
-			PartitionedSinkProvider provider = getProvider();
-			Map<String, List<String>> sinks = provider.getSinks();
-			Date lastPushed = null;
-			long time = new Date().getTime();
-			for (String id : sinks.keySet()) {
-				for (String category : sinks.get(id)) {
-					PartitionedSink sink = provider.getSink(id, category);
-					SinkSnapshot snapshot = sink.getSnapshotUntil(1, time);
-					if (!snapshot.getValues().isEmpty()) {
-						if (lastPushed == null || snapshot.getValues().get(0).getTimestamp() > lastPushed.getTime()) {
-							lastPushed = new Date(snapshot.getValues().get(0).getTimestamp());
-						}
-					}
-				}
-			}
-			this.lastPushed = lastPushed;
+			this.lastPushed = calculateLastPushed(this);
 		}
 		return lastPushed;
 	}
 
-	public PartitionedSinkProvider getProvider() {
+	public static Date calculateLastPushed(ListableSinkProviderArtifact provider) {
+		// calculate the last pushed based on the most recent data available across all sinks
+		Map<String, List<String>> sinks = provider.getSinks();
+		Date lastPushed = null;
+		long time = new Date().getTime();
+		for (String id : sinks.keySet()) {
+			for (String category : sinks.get(id)) {
+				HistorySink sink = (HistorySink) provider.getSink(id, category);
+				SinkSnapshot snapshot = sink.getSnapshotUntil(1, time);
+				if (!snapshot.getValues().isEmpty()) {
+					if (lastPushed == null || snapshot.getValues().get(0).getTimestamp() > lastPushed.getTime()) {
+						lastPushed = new Date(snapshot.getValues().get(0).getTimestamp());
+					}
+				}
+			}
+		}
+		return lastPushed;
+	}
+
+	public ListableSinkProvider getProvider() {
 		if (provider == null) {
 			try {
 				synchronized(this) {
@@ -192,6 +116,16 @@ public class MetricsDatabaseArtifact extends JAXBArtifact<MetricsDatabaseConfigu
 			}
 		}
 		return provider;
+	}
+
+	@Override
+	public Map<String, List<String>> getSinks() {
+		return getProvider().getSinks();
+	}
+	
+	@Override
+	public Sink getSink(String id, String category) {
+		return getProvider().getSink(id, category);
 	}
 	
 }

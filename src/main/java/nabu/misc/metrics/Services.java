@@ -6,6 +6,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.jws.WebParam;
 import javax.jws.WebResult;
@@ -14,13 +15,22 @@ import javax.validation.constraints.NotNull;
 
 import be.nabu.eai.module.cluster.ClusterArtifact;
 import be.nabu.eai.module.metrics.MetricsREST;
+import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
 import be.nabu.eai.module.metrics.beans.MetricOverview;
-import be.nabu.eai.module.metrics.database.MetricsDatabaseArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.ListableSinkProviderArtifact;
 import be.nabu.eai.server.ServerConnection;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.api.client.HTTPClient;
 import be.nabu.libs.http.core.DefaultHTTPRequest;
+import be.nabu.libs.metrics.core.SinkStatisticsImpl;
+import be.nabu.libs.metrics.core.api.HistorySink;
+import be.nabu.libs.metrics.core.api.Sink;
+import be.nabu.libs.metrics.core.api.SinkSnapshot;
+import be.nabu.libs.metrics.core.api.SinkValue;
+import be.nabu.libs.metrics.core.api.StatisticsContainer;
+import be.nabu.libs.metrics.core.api.TaggableSink;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
@@ -35,6 +45,8 @@ import be.nabu.utils.mime.impl.PlainMimeEmptyPart;
 
 @WebService
 public class Services {
+	
+	public static final int DEFAULT_AMOUNT = 100;
 	
 	private ExecutionContext context;
 	
@@ -76,7 +88,7 @@ public class Services {
 	
 	@WebResult(name = "lastPushed")
 	public Date lastPushed(@NotNull @WebParam(name = "metricsDatabaseId") String metricsDatabaseId) {
-		MetricsDatabaseArtifact database = context.getServiceContext().getResolver(MetricsDatabaseArtifact.class).resolve(metricsDatabaseId);
+		ListableSinkProviderArtifact database = context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
 		if (database == null) {
 			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
 		}
@@ -84,26 +96,94 @@ public class Services {
 	}
 	
 	public void persist(@NotNull @WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @NotNull @WebParam(name = "metrics") MetricOverview overview) {
-		MetricsDatabaseArtifact database = context.getServiceContext().getResolver(MetricsDatabaseArtifact.class).resolve(metricsDatabaseId);
-		if (database == null) {
+		ListableSinkProviderArtifact provider = context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
+		if (provider == null) {
 			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
 		}
-		database.persist(overview);
+		for (ArtifactMetrics metrics : overview.getMetrics()) {
+			// push the gauges
+			Map<String, SinkValue> gauges = metrics.getGauges();
+			for (String key : gauges.keySet()) {
+				SinkValue sinkValue = gauges.get(key);
+				provider.getSink(metrics.getId(), key).push(sinkValue.getTimestamp(), sinkValue.getValue());
+			}
+			// push the snapshots
+			Map<String, SinkSnapshot> snapshots = metrics.getSnapshots();
+			for (String key : snapshots.keySet()) {
+				SinkSnapshot sinkSnapshot = snapshots.get(key);
+				Sink sink = provider.getSink(metrics.getId(), key);
+				if (sink instanceof TaggableSink) {
+					if (metrics.getType() != null && !metrics.getType().equals(((TaggableSink) sink).getTag("type"))) {
+						((TaggableSink) sink).setTag("type", metrics.getType());
+					}
+					for (String tag : metrics.getTags().keySet()) {
+						((TaggableSink) sink).setTag(tag, metrics.getTags().get(tag));
+					}
+				}
+				for (SinkValue value : sinkSnapshot.getValues()) {
+					sink.push(value.getTimestamp(), value.getValue());
+				}
+			}
+		}
+		// update the last pushed
+		provider.setLastPushed(new Date(overview.getTimestamp()));
 	}
 	
 	@WebResult(name = "metrics")
 	public MetricOverview select(@NotNull @WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @WebParam(name = "since") Date since, @WebParam(name = "until") Date until) {
-		MetricsDatabaseArtifact database = context.getServiceContext().getResolver(MetricsDatabaseArtifact.class).resolve(metricsDatabaseId);
-		if (database == null) {
+		ListableSinkProviderArtifact provider = context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
+		if (provider == null) {
 			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
 		}
-		return database.select(since, until);
+		MetricOverview overview = new MetricOverview();
+		if (until != null) {
+			overview.setTimestamp(until.getTime());
+		}
+		Map<String, List<String>> sinks = provider.getSinks();
+		for (String id : sinks.keySet()) {
+			boolean hasData = false;
+			ArtifactMetrics artifactMetrics = new ArtifactMetrics();
+			artifactMetrics.setId(id);
+			for (String category : sinks.get(id)) {
+				HistorySink sink = (HistorySink) provider.getSink(id, category);
+				artifactMetrics.getSnapshots().put(category, since == null 
+					? sink.getSnapshotUntil(DEFAULT_AMOUNT, overview.getTimestamp())
+					: sink.getSnapshotBetween(since.getTime() + 1, overview.getTimestamp()));
+				// get the current statistics for the sink
+				if (sink instanceof StatisticsContainer) {
+					artifactMetrics.getStatistics().put(category, new SinkStatisticsImpl(((StatisticsContainer) sink).getStatistics()));
+				}
+				if (sink instanceof TaggableSink && ((TaggableSink) sink).getTags() != null) {
+					// best effort filling in of the artifact type
+					if (artifactMetrics.getType() == null) {
+						artifactMetrics.setType(((TaggableSink) sink).getTag("type"));
+					}
+					for (String tag : ((TaggableSink) sink).getTags()) {
+						artifactMetrics.getTags().put(tag, ((TaggableSink) sink).getTag(tag));
+					}
+				}
+				artifactMetrics.setSince(since);
+				artifactMetrics.setUntil(until);
+				hasData |= artifactMetrics.getSnapshots().get(category).getValues().size() > 0;
+			}
+			// if we still don't know the type, try to resolve it (again best effort)
+			if (artifactMetrics.getType() == null) {
+				Artifact artifact = provider.getRepository().resolve(id);
+				if (artifact != null) {
+					artifactMetrics.setType(MetricsREST.getType(artifact));
+				}
+			}
+			if (hasData) {
+				overview.getMetrics().add(artifactMetrics);
+			}
+		}
+		return overview;
 	}
 	
 	@WebResult(name = "metricDatabaseIds")
 	public List<String> metricDatabases() {
 		List<String> ids = new ArrayList<String>();
-		for (MetricsDatabaseArtifact artifact : EAIResourceRepository.getInstance().getArtifacts(MetricsDatabaseArtifact.class)) {
+		for (ListableSinkProviderArtifact artifact : EAIResourceRepository.getInstance().getArtifacts(ListableSinkProviderArtifact.class)) {
 			ids.add(artifact.getId());
 		}
 		return ids;

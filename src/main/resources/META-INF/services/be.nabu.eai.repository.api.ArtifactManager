@@ -1,1 +1,2 @@
 be.nabu.eai.module.metrics.database.MetricsDatabaseManager
+be.nabu.eai.module.metrics.memory.MetricsMemoryManager

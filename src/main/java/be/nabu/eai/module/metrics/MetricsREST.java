@@ -8,9 +8,9 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 
+import nabu.misc.metrics.Services;
 import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
 import be.nabu.eai.module.metrics.beans.MetricOverview;
-import be.nabu.eai.module.metrics.database.MetricsDatabaseArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
@@ -72,7 +72,7 @@ public class MetricsREST {
 				Sink sink = metricInstance.getSink(sinkId);
 				if (sink instanceof HistorySink) {
 					artifactMetrics.getSnapshots().put(sinkId, since == null 
-						? ((HistorySink) sink).getSnapshotUntil(MetricsDatabaseArtifact.DEFAULT_AMOUNT, overview.getTimestamp())
+						? ((HistorySink) sink).getSnapshotUntil(Services.DEFAULT_AMOUNT, overview.getTimestamp())
 						: ((HistorySink) sink).getSnapshotBetween(since.getTime() + 1, overview.getTimestamp()));
 				}
 				else if (sink instanceof CurrentValueSink) {
