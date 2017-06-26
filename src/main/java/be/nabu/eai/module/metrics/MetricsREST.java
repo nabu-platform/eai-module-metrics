@@ -69,6 +69,18 @@ public class MetricsREST {
 				artifactMetrics.getGauges().put(gaugeId, new SinkValueImpl(new Date().getTime(), metricInstance.getGauge(gaugeId).getValue()));
 			}
 			for (String sinkId : metricInstance.getSinkIds()) {
+				if (sinkId.equals("lambdaExecutionTime") && artifactMetrics.getType() == null) {
+					artifactMetrics.setType("lambda");
+					artifactMetrics.getTags().put("class", "lambda");
+				}
+				else if (sinkId.equals("scriptExecutionTime") && artifactMetrics.getType() == null) {
+					artifactMetrics.setType("script");
+					artifactMetrics.getTags().put("class", "script");
+				}
+				else if (sinkId.equals("methodExecutionTime") && artifactMetrics.getType() == null) {
+					artifactMetrics.setType("method");
+					artifactMetrics.getTags().put("class", "method");
+				}
 				Sink sink = metricInstance.getSink(sinkId);
 				if (sink instanceof HistorySink) {
 					artifactMetrics.getSnapshots().put(sinkId, since == null 
