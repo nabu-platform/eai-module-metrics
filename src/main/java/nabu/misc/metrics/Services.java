@@ -14,7 +14,9 @@ import javax.jws.WebService;
 import javax.validation.constraints.NotNull;
 
 import be.nabu.eai.module.cluster.ClusterArtifact;
+import be.nabu.eai.module.metrics.MetricsProviderDescription;
 import be.nabu.eai.module.metrics.MetricsREST;
+import be.nabu.eai.module.metrics.MetricsSnapshot;
 import be.nabu.eai.module.metrics.beans.ArtifactMetrics;
 import be.nabu.eai.module.metrics.beans.MetricOverview;
 import be.nabu.eai.repository.EAIResourceRepository;
@@ -26,8 +28,8 @@ import be.nabu.libs.http.api.client.HTTPClient;
 import be.nabu.libs.http.core.DefaultHTTPRequest;
 import be.nabu.libs.metrics.core.SinkStatisticsImpl;
 import be.nabu.libs.metrics.core.api.HistorySink;
+import be.nabu.libs.metrics.core.api.ListableSinkProvider;
 import be.nabu.libs.metrics.core.api.Sink;
-import be.nabu.libs.metrics.core.api.SinkProvider;
 import be.nabu.libs.metrics.core.api.SinkSnapshot;
 import be.nabu.libs.metrics.core.api.SinkValue;
 import be.nabu.libs.metrics.core.api.StatisticsContainer;
@@ -191,29 +193,29 @@ public class Services {
 	}
 	
 	@WebResult(name = "snapshot")
-	public List<SinkValue> snapshotBetween(@WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @NotNull @WebParam(name = "sinkId") String id, @NotNull @WebParam(name = "category") String category, @NotNull @WebParam(name = "since") Date since, @WebParam(name = "until") Date until) {
-		SinkProvider provider = metricsDatabaseId == null ? EAIResourceRepository.getInstance() : context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
+	public MetricsSnapshot snapshotBetween(@WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @WebParam(name = "id") String id, @WebParam(name = "category") String category, @NotNull @WebParam(name = "since") Date since, @WebParam(name = "until") Date until) {
+		ListableSinkProvider provider = metricsDatabaseId == null ? EAIResourceRepository.getInstance() : context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
 		if (provider == null) {
 			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
 		}
-		Sink sink = provider.getSink(id, category);
-		if (sink instanceof HistorySink) {
-			return ((HistorySink) sink).getSnapshotBetween(since.getTime(), until == null ? new Date().getTime() : until.getTime()).getValues();
-		}
-		return null;
+		return MetricsSnapshot.build(provider, id, category, until, since);
 	}
 	
 	@WebResult(name = "snapshot")
-	public List<SinkValue> snapshotUntil(@WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @NotNull @WebParam(name = "sinkId") String id, @NotNull @WebParam(name = "category") String category, @WebParam(name = "amount") Integer amount, @WebParam(name = "until") Date until) {
-		SinkProvider provider = metricsDatabaseId == null ? EAIResourceRepository.getInstance() : context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
+	public MetricsSnapshot snapshotUntil(@WebParam(name = "metricsDatabaseId") String metricsDatabaseId, @WebParam(name = "id") String id, @WebParam(name = "category") String category, @WebParam(name = "amount") Integer amount, @WebParam(name = "until") Date until) {
+		ListableSinkProvider provider = metricsDatabaseId == null ? EAIResourceRepository.getInstance() : context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
 		if (provider == null) {
 			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
 		}
-		Sink sink = provider.getSink(id, category);
-		if (sink instanceof HistorySink) {
-			return ((HistorySink) sink).getSnapshotUntil(amount == null ? DEFAULT_AMOUNT : amount, until == null ? new Date().getTime() : until.getTime()).getValues();
-		}
-		return null;
+		return MetricsSnapshot.build(provider, id, category, until, amount == null ? DEFAULT_AMOUNT : amount);
 	}
 	
+	@WebResult(name = "description")
+	public MetricsProviderDescription describe(@WebParam(name = "metricsDatabaseId") String metricsDatabaseId) {
+		ListableSinkProvider provider = metricsDatabaseId == null ? EAIResourceRepository.getInstance() : context.getServiceContext().getResolver(ListableSinkProviderArtifact.class).resolve(metricsDatabaseId);
+		if (provider == null) {
+			throw new IllegalArgumentException("The metrics database does not exist: " + metricsDatabaseId);
+		}
+		return MetricsProviderDescription.describe(provider);
+	}
 }
