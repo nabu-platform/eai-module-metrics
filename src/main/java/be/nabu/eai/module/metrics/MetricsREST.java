@@ -30,7 +30,7 @@ public class MetricsREST {
 	@GET
 	@Path("/metrics/{since}")
 	public MetricOverview getOverview(@PathParam("since") Long since, @QueryParam("filter") String filter) {
-		return build(repository, since == null ? null : new Date(since), filter);
+		return build(repository, since == null ? null : new Date(since), filter, true);
 	}
 	
 	@GET
@@ -39,7 +39,7 @@ public class MetricsREST {
 		return getOverview(null, filter);
 	}
 	
-	public static MetricOverview build(EAIResourceRepository repository, Date since, String filter) {
+	public static MetricOverview build(EAIResourceRepository repository, Date since, String filter, boolean includeHistory) {
 		MetricOverview overview = new MetricOverview();
 		for (String id : repository.getMetricInstances()) {
 			if (filter != null && !id.matches(filter)) {

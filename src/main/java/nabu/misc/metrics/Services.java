@@ -54,7 +54,7 @@ public class Services {
 	private ExecutionContext context;
 	
 	@WebResult(name = "metrics")
-	public MetricOverview poll(@WebParam(name = "host") String host, @WebParam(name = "since") Date since, @WebParam(name = "filter") String filter) throws IOException, FormatException, ParseException {
+	public MetricOverview poll(@WebParam(name = "host") String host, @WebParam(name = "since") Date since, @WebParam(name = "filter") String filter, @WebParam(name = "includeHistory") Boolean includeHistory) throws IOException, FormatException, ParseException {
 		ServerConnection connection = null;
 		if (host != null) {
 			for (ClusterArtifact cluster : EAIResourceRepository.getInstance().getArtifacts(ClusterArtifact.class)) {
@@ -85,7 +85,7 @@ public class Services {
 		}
 		// we are on the current repository
 		else {
-			return MetricsREST.build(EAIResourceRepository.getInstance(), since, filter);
+			return MetricsREST.build(EAIResourceRepository.getInstance(), since, filter, includeHistory != null && includeHistory);
 		}
 	}
 	
